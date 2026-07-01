@@ -383,6 +383,135 @@ final class NowPlayingViewModelIntegrationTests: XCTestCase {
         XCTAssertEqual(service.detailPollingStates, [true, false])
     }
 
+    func testLyricsLoadWhenLyricsPresentationBecomesActive() async {
+        let service = FakeNowPlayingService()
+        let snapshot = makeNowPlayingSnapshot()
+        let lyrics = makeTrackLyrics(trackKey: snapshot.lyricsLookupKey ?? "track")
+        let lyricsProvider = FakeLyricsProvider(lyrics: lyrics)
+        let viewModel = NowPlayingViewModel(
+            service: service,
+            lyricsProvider: lyricsProvider
+        )
+        TestLifetime.retain(viewModel)
+
+        service.publish(snapshot)
+        viewModel.setLyricsPresentationActive(true, source: "test.lyrics")
+
+        try? await Task.sleep(nanoseconds: 50_000_000)
+
+        XCTAssertEqual(viewModel.lyricsState, .loaded(lyrics))
+        XCTAssertEqual(lyricsProvider.requestedSnapshots.map(\.title), [snapshot.title])
+    }
+
+    func testCompositeLyricsProviderFallsBackToNextProvider() async throws {
+        let snapshot = makeNowPlayingSnapshot()
+        let lyrics = makeTrackLyrics(trackKey: snapshot.lyricsLookupKey ?? "track")
+        let emptyProvider = FakeLyricsProvider(lyrics: nil)
+        let fallbackProvider = FakeLyricsProvider(lyrics: lyrics)
+        let provider = CompositeLyricsProvider(providers: [
+            emptyProvider,
+            fallbackProvider
+        ])
+
+        let result = try await provider.lyrics(for: snapshot)
+
+        XCTAssertEqual(result, lyrics)
+        XCTAssertEqual(emptyProvider.requestedSnapshots.count, 1)
+        XCTAssertEqual(fallbackProvider.requestedSnapshots.count, 1)
+    }
+
+    func testLyricsReloadForTrackChangeAndIgnoreStaleLookup() async {
+        let service = FakeNowPlayingService()
+        let firstSnapshot = makeNowPlayingSnapshot(
+            title: "First Signal",
+            artist: "Debug Ensemble",
+            album: "Preview Mode"
+        )
+        let secondSnapshot = makeNowPlayingSnapshot(
+            title: "Second Signal",
+            artist: "Debug Ensemble",
+            album: "Preview Mode"
+        )
+        let firstLyrics = makeTrackLyrics(
+            trackKey: firstSnapshot.lyricsLookupKey ?? "first",
+            lines: [(0, "First line")]
+        )
+        let secondLyrics = makeTrackLyrics(
+            trackKey: secondSnapshot.lyricsLookupKey ?? "second",
+            lines: [(0, "Second line")]
+        )
+        let lyricsProvider = FakeLyricsProvider { snapshot in
+            if snapshot.title == firstSnapshot.title {
+                try await Task.sleep(nanoseconds: 300_000_000)
+                return firstLyrics
+            }
+
+            return secondLyrics
+        }
+        let viewModel = NowPlayingViewModel(
+            service: service,
+            lyricsProvider: lyricsProvider
+        )
+        TestLifetime.retain(viewModel)
+
+        service.publish(firstSnapshot)
+        viewModel.setLyricsPresentationActive(true, source: "test.lyrics")
+        await Task.yield()
+
+        service.publish(secondSnapshot)
+        try? await Task.sleep(nanoseconds: 450_000_000)
+
+        XCTAssertEqual(viewModel.lyricsState, .loaded(secondLyrics))
+
+        try? await Task.sleep(nanoseconds: 250_000_000)
+
+        XCTAssertEqual(viewModel.lyricsState, .loaded(secondLyrics))
+    }
+
+    func testLyricsPresentationStaysActiveUntilAllSourcesDisappear() async {
+        let service = FakeNowPlayingService()
+        let lyricsProvider = FakeLyricsProvider { snapshot in
+            makeTrackLyrics(
+                trackKey: snapshot.lyricsLookupKey ?? snapshot.title,
+                lines: [(0, "\(snapshot.title) lyric")]
+            )
+        }
+        let viewModel = NowPlayingViewModel(
+            service: service,
+            lyricsProvider: lyricsProvider
+        )
+        TestLifetime.retain(viewModel)
+
+        let firstSnapshot = makeNowPlayingSnapshot(title: "First Signal")
+        let secondSnapshot = makeNowPlayingSnapshot(title: "Second Signal")
+        let thirdSnapshot = makeNowPlayingSnapshot(title: "Third Signal")
+
+        service.publish(firstSnapshot)
+        viewModel.setLyricsPresentationActive(true, source: "minimal")
+        viewModel.setLyricsPresentationActive(true, source: "expanded")
+        try? await Task.sleep(nanoseconds: 50_000_000)
+
+        XCTAssertEqual(lyricsProvider.requestedSnapshots.map(\.title), ["First Signal"])
+
+        viewModel.setLyricsPresentationActive(false, source: "minimal")
+        service.publish(secondSnapshot)
+        try? await Task.sleep(nanoseconds: 350_000_000)
+
+        XCTAssertEqual(
+            lyricsProvider.requestedSnapshots.map(\.title),
+            ["First Signal", "Second Signal"]
+        )
+
+        viewModel.setLyricsPresentationActive(false, source: "expanded")
+        service.publish(thirdSnapshot)
+        try? await Task.sleep(nanoseconds: 350_000_000)
+
+        XCTAssertEqual(
+            lyricsProvider.requestedSnapshots.map(\.title),
+            ["First Signal", "Second Signal"]
+        )
+    }
+
     func testFavoriteStatePersistsForTrackIdentity() {
         let service = FakeNowPlayingService()
         let favoritesStore = makeFavoriteStore(named: #function)
@@ -492,4 +621,22 @@ private func makeFavoriteStore(named name: String) -> UserDefaults {
     let defaults = UserDefaults(suiteName: suiteName)!
     defaults.removePersistentDomain(forName: suiteName)
     return defaults
+}
+
+private func makeTrackLyrics(
+    trackKey: String,
+    lines: [(TimeInterval?, String)] = [
+        (0, "Opening line"),
+        (12, "Active line"),
+        (24, "Closing line")
+    ],
+    isSynced: Bool = true
+) -> TrackLyrics {
+    TrackLyrics(
+        trackKey: trackKey,
+        lines: lines.enumerated().map { index, line in
+            LyricLine(id: index, startTime: line.0, text: line.1)
+        },
+        isSynced: isSynced
+    )
 }

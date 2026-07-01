@@ -26,16 +26,16 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/jackson-storm/DynamicNotch/releases">
-    <img src="https://img.shields.io/github/downloads/jackson-storm/DynamicNotch/total?label=downloads" alt="GitHub downloads" />
+  <a href="https://github.com/AmirTheDude69/DynamicNotch/releases">
+    <img src="https://img.shields.io/github/downloads/AmirTheDude69/DynamicNotch/total?label=downloads" alt="GitHub downloads" />
   </a>
   <img src="https://img.shields.io/badge/macOS-14.6%2B-111111?logo=apple" alt="macOS 14.6 or later" />
-  <a href="https://github.com/jackson-storm/DynamicNotch/releases/latest">
-    <img src="https://img.shields.io/github/v/release/jackson-storm/DynamicNotch?label=&display_name=tag&sort=semver" alt="Latest release" />
+  <a href="https://github.com/AmirTheDude69/DynamicNotch/releases/latest">
+    <img src="https://img.shields.io/github/v/release/AmirTheDude69/DynamicNotch?label=&display_name=tag&sort=semver" alt="Latest release" />
   </a>
   <img src="https://img.shields.io/badge/Swift-5-F05138?logo=swift&logoColor=white" alt="Swift 5" />
   <a href="LICENSE">
-    <img src="https://img.shields.io/github/license/jackson-storm/DynamicNotch" alt="License" />
+    <img src="https://img.shields.io/github/license/AmirTheDude69/DynamicNotch" alt="License" />
   </a>
 </p>
 
@@ -69,7 +69,7 @@ The main goal is to make the project as native as possible, both in terms of des
 
 ## 📦 Installation
 
-1. Download the latest DMG from the [Releases](https://github.com/jackson-storm/DynamicNotch/releases) page.
+1. Download the latest DMG from the [Releases](https://github.com/AmirTheDude69/DynamicNotch/releases) page.
 2. Drag `DynamicNotch` into `Applications`.
 3. Launch the app.
 4. Grant the permissions needed for the features you want to use.
@@ -88,7 +88,7 @@ The main goal is to make the project as native as possible, both in terms of des
 ## 🛠️ Build From Source
 
 ```bash
-git clone https://github.com/jackson-storm/DynamicNotch.git
+git clone https://github.com/AmirTheDude69/DynamicNotch.git
 cd DynamicNotch
 open DynamicNotch.xcodeproj
 ```

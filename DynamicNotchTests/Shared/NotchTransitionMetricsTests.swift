@@ -11,15 +11,15 @@ final class NotchTransitionMetricsTests: XCTestCase {
     func testHorizontalCompensationOffsetMatchesExpandedReferenceWidth() {
         let offset = NotchTransitionMetrics.horizontalCompensationOffset(for: 390)
 
-        XCTAssertEqual(offset, -60, accuracy: 0.001)
+        XCTAssertEqual(offset, -90, accuracy: 0.001)
     }
 
-    func testHorizontalCompensationOffsetIsConstantRegardlessOfNotchWidth() {
+    func testHorizontalCompensationOffsetScalesWithNotchWidth() {
         let compactOffset = NotchTransitionMetrics.horizontalCompensationOffset(for: 150)
         let expandedOffset = NotchTransitionMetrics.horizontalCompensationOffset(for: 500)
 
-        XCTAssertEqual(compactOffset, -60, accuracy: 0.001)
-        XCTAssertEqual(expandedOffset, -60, accuracy: 0.001)
+        XCTAssertEqual(compactOffset, -(150 * NotchTransitionMetrics.horizontalCompensationRatio), accuracy: 0.001)
+        XCTAssertEqual(expandedOffset, -(500 * NotchTransitionMetrics.horizontalCompensationRatio), accuracy: 0.001)
     }
 
     func testVerticalCompensationOffsetIsZeroForBaseHeight() {

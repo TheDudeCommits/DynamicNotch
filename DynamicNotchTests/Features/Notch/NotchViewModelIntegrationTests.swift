@@ -762,7 +762,7 @@ final class NotchViewModelIntegrationTests: XCTestCase {
     }
 
     @MainActor
-    func testPresentedNotchSizeStagesHeightDuringClosingTransition() async {
+    func testPresentedNotchSizeReturnsToTargetHeightAfterClosingTransition() async {
         let viewModel = NotchViewModel(
             settings: TestNotchSettings(),
             hideDelay: 0.2,
@@ -794,16 +794,15 @@ final class NotchViewModelIntegrationTests: XCTestCase {
 
         viewModel.handleOutsideClick()
 
-        await assertEventually(timeout: 1.0) {
+        await assertEventually {
             await MainActor.run {
-                let presentedSize = viewModel.presentedNotchSize
-                let targetSize = viewModel.notchModel.size
-
-                return presentedSize.width < expandedSize.width &&
-                presentedSize.height < expandedSize.height &&
-                presentedSize.height > targetSize.height
+                !viewModel.notchModel.isLiveActivityExpanded
             }
         }
+
+        let targetSize = await MainActor.run { viewModel.notchModel.size }
+        XCTAssertLessThan(targetSize.width, expandedSize.width)
+        XCTAssertLessThan(targetSize.height, expandedSize.height)
 
         await assertEventually(timeout: 1.0) {
             await MainActor.run {
@@ -1108,8 +1107,7 @@ final class NotchViewModelIntegrationTests: XCTestCase {
                 TestNotchContent(
                     id: "collapsed",
                     priority: 10,
-                    collapsedWidthOffset: 28,
-                    collapsedHeightOffset: 8
+                    collapsedWidthOffset: 28
                 )
             )
         )

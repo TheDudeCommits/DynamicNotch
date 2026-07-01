@@ -199,6 +199,25 @@ final class FakeAudioOutputRoutingService: AudioOutputRouting {
     }
 }
 
+@MainActor
+final class FakeLyricsProvider: LyricsProviding {
+    private let handler: (NowPlayingSnapshot) async throws -> TrackLyrics?
+    private(set) var requestedSnapshots: [NowPlayingSnapshot] = []
+
+    init(lyrics: TrackLyrics? = nil) {
+        self.handler = { _ in lyrics }
+    }
+
+    init(handler: @escaping (NowPlayingSnapshot) async throws -> TrackLyrics?) {
+        self.handler = handler
+    }
+
+    func lyrics(for snapshot: NowPlayingSnapshot) async throws -> TrackLyrics? {
+        requestedSnapshots.append(snapshot)
+        return try await handler(snapshot)
+    }
+}
+
 final class FakeFileDownloadMonitor: DownloadMonitoring {
     var onSnapshotChange: (([DownloadModel]) -> Void)?
 

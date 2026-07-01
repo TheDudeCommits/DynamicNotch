@@ -91,7 +91,7 @@ struct AboutAppSettingsView: View {
                     .accessibilityIdentifier("settings.about.telegram")
                     
                     Button(action: {
-                        if let url = URL(string: "https://github.com/jackson-storm/DynamicNotch") {
+                        if let url = URL(string: "https://github.com/AmirTheDude69/DynamicNotch") {
                             openInternetURL(url)
                         }
                     }) {

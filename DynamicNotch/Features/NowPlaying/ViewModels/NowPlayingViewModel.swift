@@ -56,13 +56,17 @@ final class NowPlayingViewModel: ObservableObject {
     private var artworkFlipTrackKey: String?
     private var artworkFlipStartedAt: Date?
     private var activeDetailedPresentationSources = Set<String>()
-    private var isLyricsPresentationActive = false
+    private var activeLyricsPresentationSources = Set<String>()
     #if DEBUG
     private var isShowingDebugPreviewSnapshot = false
     #endif
 
     var hasActiveSession: Bool {
         snapshot != nil
+    }
+
+    private var isLyricsPresentationActive: Bool {
+        !activeLyricsPresentationSources.isEmpty
     }
 
     private var artworkSwapDelay: TimeInterval {
@@ -73,11 +77,18 @@ final class NowPlayingViewModel: ObservableObject {
         self.init(
             service: MediaRemoteNowPlayingService(),
             audioOutputRouting: SystemAudioOutputRoutingService(),
-            lyricsProvider: LRCLIBLyricsProvider(),
+            lyricsProvider: Self.makeDefaultLyricsProvider(),
             favoritesStore: .standard,
             playbackSourceOpener: WorkspacePlaybackSourceOpener(),
             sourceFilter: .any
         )
+    }
+
+    static func makeDefaultLyricsProvider() -> any LyricsProviding {
+        CompositeLyricsProvider(providers: [
+            LRCLIBLyricsProvider(),
+            OvhLyricsProvider()
+        ])
     }
 
     init(
@@ -90,10 +101,7 @@ final class NowPlayingViewModel: ObservableObject {
     ) {
         self.service = service
         self.audioOutputRouting = audioOutputRouting ?? InactiveAudioOutputRoutingService()
-        self.lyricsProvider = lyricsProvider ?? CompositeLyricsProvider(providers: [
-            LRCLIBLyricsProvider(),
-            OvhLyricsProvider()
-        ])
+        self.lyricsProvider = lyricsProvider ?? Self.makeDefaultLyricsProvider()
         self.favoritesStore = favoritesStore
         self.detailPollingService = service as? any NowPlayingDetailPollingConfigurable
         self.playbackSourceOpener = playbackSourceOpener ?? WorkspacePlaybackSourceOpener()
@@ -128,7 +136,7 @@ final class NowPlayingViewModel: ObservableObject {
         ignoresServiceSnapshots = true
         service.stopMonitoring()
         activeDetailedPresentationSources.removeAll()
-        setLyricsPresentationActive(false)
+        activeLyricsPresentationSources.removeAll()
         updateDetailPollingState()
         cancelPendingSessionEnd()
         cancelPendingArtworkPresentation()
@@ -288,17 +296,25 @@ final class NowPlayingViewModel: ObservableObject {
         updateDetailPollingState()
     }
 
-    func setLyricsPresentationActive(_ isActive: Bool) {
-        guard isLyricsPresentationActive != isActive else {
-            if isActive {
+    func setLyricsPresentationActive(_ isActive: Bool, source: String = "default") {
+        let wasActive = isLyricsPresentationActive
+
+        if isActive {
+            activeLyricsPresentationSources.insert(source)
+        } else {
+            activeLyricsPresentationSources.remove(source)
+        }
+
+        let isNowActive = isLyricsPresentationActive
+
+        guard wasActive != isNowActive else {
+            if isNowActive {
                 loadLyricsIfNeeded(for: snapshot)
             }
             return
         }
 
-        isLyricsPresentationActive = isActive
-
-        if isActive {
+        if isNowActive {
             loadLyricsIfNeeded(for: snapshot)
         } else {
             cancelLyricsLookup()
@@ -307,7 +323,8 @@ final class NowPlayingViewModel: ObservableObject {
 
     func clearPresentationActivityState() {
         activeDetailedPresentationSources.removeAll()
-        setLyricsPresentationActive(false)
+        activeLyricsPresentationSources.removeAll()
+        cancelLyricsLookup()
         updateDetailPollingState()
     }
 
