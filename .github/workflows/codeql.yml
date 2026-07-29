@@ -41,6 +41,9 @@ jobs:
             queries:
               - uses: security-extended
 
+      - name: Install Metal toolchain
+        run: xcodebuild -downloadComponent MetalToolchain
+
       - name: Build application for analysis
         run: |
           set -euo pipefail
