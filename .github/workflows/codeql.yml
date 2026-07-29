@@ -41,12 +41,11 @@ jobs:
             queries:
               - uses: security-extended
 
-      - name: Install Metal toolchain
-        run: xcodebuild -downloadComponent MetalToolchain
-
       - name: Build application for analysis
         run: |
           set -euo pipefail
+          # CodeQL traces Swift compilation; Glur's runtime-only shaders do not
+          # affect Swift extraction and Xcode 26 hosted runners omit Metal tools.
           xcodebuild \
             -project DynamicNotch.xcodeproj \
             -scheme DynamicNotch \
@@ -54,6 +53,7 @@ jobs:
             -destination 'platform=macOS' \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
+            EXCLUDED_SOURCE_FILE_NAMES='noise.metal blur.metal' \
             clean build
 
       - name: Analyze
